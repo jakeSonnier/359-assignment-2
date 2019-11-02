@@ -163,8 +163,6 @@
   
   (cond
     [(aim? game-state)
-     (define ufo-loc aim-ufo)
-     (define new-ufo-loc )
      ]
     [(fired? game-state)]
   )
