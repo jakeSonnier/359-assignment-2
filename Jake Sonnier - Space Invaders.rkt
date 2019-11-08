@@ -159,14 +159,35 @@
 
 ;; SIGS -> SIGS
 ;; Move the ufo and missiles as time goes on
-(define (update game-state)
-  
+(define (update game-state)  
   (cond
     [(aim? game-state)
-     ]
-    [(fired? game-state)]
-  )
-  )
+     ;;New ufo x,y
+     (define new-ufo-x (+(point-x (aim-ufo game-state))(random-jump)))
+     (define new-ufo-y (+(point-y (aim-ufo game-state))1))
+     ;;New tank loc
+     (define new-tank-loc (+(tank-loc (aim-tank game-state))TANK-NEG-VEL))
+     ;;New ufo and tank
+     (define new-ufo (point new-ufo-x new-ufo-y))
+     (define new-tank (tank new-tank-loc TANK-NEG-VEL))
+     ;;New aim game-state
+     (define new-aim (aim new-ufo new-tank))new-aim]
+    [(fired? game-state)
+     ;;New missile x,y
+     (define new-missile-x (point-x (fired-missile game-state)))
+     (define new-missile-y (+(point-y (fired-missile game-state))MISSILE-SPEED))
+     ;;New ufo x,y
+     (define new-ufo-x (+(point-x (aim-ufo game-state))(random-jump)))
+     (define new-ufo-y (+(point-y (aim-ufo game-state))1))
+     ;;New tank loc
+     (define new-tank-loc (+(tank-loc (aim-tank game-state))TANK-NEG-VEL))
+     ;;New ufo and tank and missile
+     (define new-ufo (point new-ufo-x new-ufo-y))
+     (define new-tank (tank new-tank-loc TANK-NEG-VEL))
+     (define new-missile (point new-missile-x new-missile-y))
+     ;;New aim game-state
+     (define new-fired (fired new-ufo new-tank))
+     (define new-aim (aim new-ufo new-tank))(if (<= new-missile-y 0) new-aim new-fired)]))
 
 
 ;; UFO Missile -> Bool

@@ -1,7 +1,7 @@
 #lang racket
 (require 2htdp/image 2htdp/universe test-engine/racket-tests)
 
-;;Put your name and ULID here
+;;Jake Sonnier C00299868
 
 ;; Graphical and Physical constants
 (define GAME-HEIGHT 200) ;;Defines the height of the area for editing
@@ -62,8 +62,8 @@
 
 ;; Add data examples for Aim states here
 
-;; aim is a structure
-;; (aim UFO Tank)
+;; fired is a structure
+;; (fired UFO Tank)
 ;; Interpretation, UFO represents the UFO position
 ;; Tank represents the Tank position.
 (struct fired [ufo tank missile] #:transparent)
@@ -142,12 +142,31 @@
 
 ;; GameState KeyEvent -> GameState
 ;; update the tanks velocity or shoot a missile
-(define (key-handler game-state ke) game-state)
+(define (key-handler game-state ke)
+  (cond
+    [(equal? ke "left") (tank tank-vel TANK-NEG-VEL)]
+    [(equal? ke "right") (tank tank-vel TANK-POS-VEL)]
+  )
+  (cond
+    [(aim? game-state)
+     (cond
+       [(equal? ke " ") game-state]
+       )
+     ]
+  )
+ )
 
 
 ;; SIGS -> SIGS
 ;; Move the ufo and missiles as time goes on
-(define (update game-state) game-state)
+(define (update game-state)
+  
+  (cond
+    [(aim? game-state)
+     ]
+    [(fired? game-state)]
+  )
+  )
 
 
 ;; UFO Missile -> Bool
@@ -209,6 +228,6 @@
 
 ;; Runs the program from a start state
 ;; Uncomment to see your program running
-;; (run AIM-EX1)
+ (run AIM-EX1)
 
 
