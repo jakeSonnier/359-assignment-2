@@ -38,13 +38,17 @@
 ;; (using the top-down, left-to-right convention)
 
 ;; Add data examples for UFOs here
+(define UFO-DATA-EX1 (point 3 4))
+(define UFO-DATA-EX2 (point UFO-START-X  UFO-START-HEIGHT))
+(define UFO-DATA-EX3 (point 0 0))
 
 ;; A Missile is a Point.
 ;; interpretation (point x y) is the missile's place
 
 ;; Add data examples for Missiles here
-
-
+(define MISSILE-DATA-EX1 (point 3 4))
+(define MISSILE-DATA-EX2 (point 1 1))
+(define MISSILE-DATA-EX3 (point 0 0))
 
 ;; A Tank is a structure:
 ;; (tank Number Number).
@@ -53,6 +57,9 @@
 (struct tank [loc vel] #:transparent)
 
 ;; Add data examples for Tanks here
+(define TANK-DATA-EX1 (tank 3 4))
+(define TANK-DATA-EX2 (tank TANK-START-X  TANK-NEG-VEL))
+(define TANK-DATA-EX3 (tank TANK-START-X TANK-POS-VEL))
 
 ;; aim is a structure
 ;; (aim UFO Tank)
@@ -61,6 +68,9 @@
 (struct aim [ufo tank] #:transparent)
 
 ;; Add data examples for Aim states here
+(define AIM-DATA-EX1 (aim UFO-DATA-EX1 TANK-DATA-EX1))
+(define AIM-DATA-EX2 (aim UFO-DATA-EX2 TANK-DATA-EX2))
+(define AIM-DATA-EX3 (aim UFO-DATA-EX3 TANK-DATA-EX3))
 
 ;; fired is a structure
 ;; (fired UFO Tank)
@@ -69,6 +79,9 @@
 (struct fired [ufo tank missile] #:transparent)
 
 ;; Add data examples for Fired states here
+(define FIRED-DATA-EX1 (fired UFO-DATA-EX1 TANK-DATA-EX1 MISSILE-DATA-EX1))
+(define FIRED-DATA-EX2 (fired UFO-DATA-EX2 TANK-DATA-EX2 MISSILE-DATA-EX2))
+(define FIRED-DATA-EX3 (fired UFO-DATA-EX3 TANK-DATA-EX3 MISSILE-DATA-EX3))
 
 ;; A SIGS is one of: 
 ;; – (aim UFO Tank)
@@ -77,6 +90,9 @@
 ;; space invader game
 
 ;; Add more relevant examples of aim and fired states here
+(define SIGS-DATA-EX1 (aim UFO-DATA-EX2 TANK-DATA-EX1))
+(define SIGS-DATA-EX2 (fired UFO-DATA-EX3 TANK-DATA-EX1 MISSILE-DATA-EX2))
+(define SIGS-DATA-EX3 (aim UFO-DATA-EX2 TANK-DATA-EX3))
 
 ;; Tank -> Image
 ;; Draw a tank on the background
@@ -143,50 +159,84 @@
 ;; GameState KeyEvent -> GameState
 ;; update the tanks velocity or shoot a missile
 (define (key-handler game-state ke)
+  (println "Printing the game state:")
+  (println game-state)
+  (println "Printing the pressed key:")
+  (println ke)
   (cond
-    [(equal? ke "left") (tank tank-vel TANK-NEG-VEL)]
-    [(equal? ke "right") (tank tank-vel TANK-POS-VEL)]
-  )
-  (cond
-    [(aim? game-state)
-     (cond
-       [(equal? ke " ") game-state]
-       )
-     ]
-  )
- )
+    ;;aim (space)
+    [(and (aim? game-state) (key=? " " ke))
+     (define initial-missile (point (tank-loc (aim-tank game-state)) (- TANK-HEIGHT 15)))
+     (fired (aim-ufo game-state) (aim-tank game-state) initial-missile)]
+    ;;aim (left)
+    [(and (aim? game-state) (key=? "left" ke))
+     (define left-tank (tank (tank-loc (aim-tank game-state)) TANK-NEG-VEL))
+     (aim (aim-ufo game-state) left-tank)]
+    ;;aim (right)
+    [(and (aim? game-state) (key=? "right" ke))
+     (define right-tank (tank (tank-loc (aim-tank game-state)) TANK-POS-VEL))
+     (aim (aim-ufo game-state) right-tank)]
+    ;;fired (left)
+    [(and (fired? game-state) (key=? "left" ke))
+          (define left-tank (tank (tank-loc (fired-tank game-state)) TANK-NEG-VEL))
+     (fired (fired-ufo game-state) left-tank (fired-missile game-state))]
+    ;;fired (right)
+    [(and (fired? game-state) (key=? "right" ke))
+          (define right-tank (tank (tank-loc (fired-tank game-state)) TANK-POS-VEL))
+     (fired (fired-ufo game-state) right-tank (fired-missile game-state))]
+    ;;fired (space)
+    [(and (fired? game-state) (key=? " " ke))
+     (fired (fired-ufo game-state) (fired-tank game-state) (fired-missile game-state))]
+    ;;anykey
+    [game-state]))
 
+;;Testing key-handler
+(check-expect (key-handler AIM-EX1 " ") FIRED-EX1)
+(check-expect (key-handler FIRED-EX1 " ") FIRED-EX1)
 
 ;; SIGS -> SIGS
 ;; Move the ufo and missiles as time goes on
 (define (update game-state)  
   (cond
+
+    ;;aim
     [(aim? game-state)
      ;;New ufo x,y
      (define new-ufo-x (+(point-x (aim-ufo game-state))(random-jump)))
-     (define new-ufo-y (+(point-y (aim-ufo game-state))1))
+     ;;Checks for edge of screen
+     (cond [(<= (+(point-x (aim-ufo game-state))(random-jump)) 0) (set! new-ufo-x 16) (println "TOO FAR LEFT")]
+           [(>= (+(point-x (aim-ufo game-state))(random-jump)) GAME-WIDTH) (set! new-ufo-x 184) (println "TOO FAR RIGHT")])
+     (define new-ufo-y (+(point-y (aim-ufo game-state))1))    
      ;;New tank loc
-     (define new-tank-loc (+(tank-loc (aim-tank game-state))TANK-NEG-VEL))
+     (define new-tank-loc (+(tank-loc (aim-tank game-state))(tank-vel (aim-tank game-state))))
+     (cond [(<= (+(tank-loc (aim-tank game-state))(tank-vel (aim-tank game-state))) 0) (set! new-tank-loc 16) (println "TOO FAR LEFT")]
+           [(>= (+(tank-loc (aim-tank game-state))(tank-vel (aim-tank game-state))) GAME-WIDTH) (set! new-tank-loc 184) (println "TOO FAR RIGHT")])
      ;;New ufo and tank
      (define new-ufo (point new-ufo-x new-ufo-y))
-     (define new-tank (tank new-tank-loc TANK-NEG-VEL))
+     (define new-tank (tank new-tank-loc 0))
      ;;New aim game-state
      (define new-aim (aim new-ufo new-tank))new-aim]
+
+    ;;fired
     [(fired? game-state)
      ;;New missile x,y
      (define new-missile-x (point-x (fired-missile game-state)))
-     (define new-missile-y (+(point-y (fired-missile game-state))MISSILE-SPEED))
+     (define new-missile-y (-(point-y (fired-missile game-state))MISSILE-SPEED))
      ;;New ufo x,y
-     (define new-ufo-x (+(point-x (aim-ufo game-state))(random-jump)))
-     (define new-ufo-y (+(point-y (aim-ufo game-state))1))
+     (define new-ufo-x (+(point-x (fired-ufo game-state))(random-jump)))
+     (cond [(<= (+(point-x (fired-ufo game-state))(random-jump)) 0) (set! new-ufo-x 16) (println "TOO FAR LEFT")]
+           [(>= (+(point-x (fired-ufo game-state))(random-jump)) GAME-WIDTH) (set! new-ufo-x 184) (println "TOO FAR RIGHT")])
+     (define new-ufo-y (+(point-y (fired-ufo game-state))1))
      ;;New tank loc
-     (define new-tank-loc (+(tank-loc (aim-tank game-state))TANK-NEG-VEL))
+     (define new-tank-loc (+(tank-loc (fired-tank game-state)) (tank-vel (fired-tank game-state))))
+     (cond [(<= (+(tank-loc (fired-tank game-state))(tank-vel (fired-tank game-state))) 0) (set! new-tank-loc 16) (println "TOO FAR LEFT")]
+           [(>= (+(tank-loc (fired-tank game-state))(tank-vel (fired-tank game-state))) GAME-WIDTH) (set! new-tank-loc 184) (println "TOO FAR RIGHT")])
      ;;New ufo and tank and missile
      (define new-ufo (point new-ufo-x new-ufo-y))
-     (define new-tank (tank new-tank-loc TANK-NEG-VEL))
+     (define new-tank (tank new-tank-loc 0))
      (define new-missile (point new-missile-x new-missile-y))
      ;;New aim game-state
-     (define new-fired (fired new-ufo new-tank))
+     (define new-fired (fired new-ufo new-tank new-missile))
      (define new-aim (aim new-ufo new-tank))(if (<= new-missile-y 0) new-aim new-fired)]))
 
 
@@ -247,8 +297,10 @@
 (render AIM-EX1)
 (render FIRED-EX1)
 
+(test)
+
 ;; Runs the program from a start state
 ;; Uncomment to see your program running
- (run AIM-EX1)
+(run AIM-EX1)
 
 
